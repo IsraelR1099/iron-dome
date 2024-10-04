@@ -79,18 +79,57 @@ static void	handle_events(int fd, int *wd, int *read_count, int argc, char *argv
 	}
 }
 
+static void	iterate_loop(struct pollfd *fds, nfds_t nfds, int fd, int *wd, int *read_count, int argc, char *argv[])
+{
+	int	poll_num;
+
+	while (!stop)
+	{
+		poll_num = poll(fds, nfds, -1);
+		if (poll_num < 0)
+		{
+			if (errno == EINTR)
+				continue ;
+			perror("poll");
+			exit(EXIT_FAILURE);
+		}
+		if (poll_num > 0)
+		{
+			if (fds[0].revents & POLLIN)
+			{
+				//Console input is available. Empty stdin and quit
+				char	buf;
+				while (read(STDIN_FILENO, &buf, 1) > 0 && buf != '\n')
+					continue ;
+				break ;
+			}
+			if (fds[1].revents & POLLIN)
+			{
+				//Inotify events are available
+				handle_events(fd, wd, read_count, argc, argv);
+			}
+		}
+	}
+}
+
+static void	set_signals(void)
+{
+	struct sigaction	sa;
+
+	sa.sa_handler = terminate_handler;
+	sigemptyset(&sa.sa_mask);
+	sa.sa_flags = 0;
+	sigaction(SIGINT, &sa, NULL);
+}
+
 int	notify(int argc, char **argv)
 {
-	char			buf;
 	int			fd;
-	int			poll_num;
 	int			i;
 	int			*wd;
 	int			*read_count;
 	nfds_t			nfds;
 	struct	pollfd		fds[2];
-	struct sigaction	sa;
-	struct sigaction	so;
 
 	if (argc < 2) {
 		printf("Usage: %s <file1> <file2> ... <fileN>\n", argv[0]);
@@ -127,40 +166,10 @@ int	notify(int argc, char **argv)
 	fds[1].events = POLLIN;
 
 	//Set up signal handler
-	sa.sa_handler = terminate_handler;
-	sigemptyset(&sa.sa_mask);
-	sa.sa_flags = 0;
-	sigaction(SIGINT, NULL, &so);
-	if (so.sa_handler != SIG_IGN)
-		sigaction(SIGINT, &sa, NULL);
+	set_signals();
 	//Wait for events and/or terminal input
 	printf("Listening for events.\n");
-	while (!stop)
-	{
-		poll_num = poll(fds, nfds, -1);
-		if (poll_num < 0)
-		{
-			if (errno == EINTR)
-				continue ;
-			perror("poll");
-			exit(EXIT_FAILURE);
-		}
-		if (poll_num > 0)
-		{
-			if (fds[0].revents & POLLIN)
-			{
-				//Console input is available. Empty stdin and quit
-				while (read(STDIN_FILENO, &buf, 1) > 0 && buf != '\n')
-					continue ;
-				break ;
-			}
-			if (fds[1].revents & POLLIN)
-			{
-				//Inotify events are available
-				handle_events(fd, wd, read_count, argc, argv);
-			}
-		}
-	}
+	iterate_loop(fds, nfds, fd, wd, read_count, argc, argv);
 	printf("Listening for events stopped.\n");
 	//Clean up
 	for (i = 1; i < argc; i++)

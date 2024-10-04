@@ -3,20 +3,26 @@
 #include <string.h>
 #include <dirent.h>
 #include <unistd.h>
+#include <errno.h>
 
 #define BUF_SIZE 512
+
+extern float	calculate_cpu_usage(int pid);
 
 static void	check_crypto_libs(int pid)
 {
 	char	path[BUF_SIZE];
 	char	line[BUF_SIZE];
 	FILE	*file;
+	float	cpu_usage;
 
 	snprintf(path, sizeof(path), "/proc/%d/maps", pid);
+	printf("Checking process %d\n", pid);
 	file = fopen(path, "r");
 	if (!file)
 	{
 		perror("fopen error");
+		printf("%s\n", strerror(errno));
 		exit(1);
 	}
 	while (fgets(line, sizeof(line), file))
@@ -26,7 +32,12 @@ static void	check_crypto_libs(int pid)
 				|| strstr(line, "libcrypt")
 				|| strstr(line, "openssl")
 				|| strstr(line, "gpg"))
+		{
 			printf("Process %d is using crypto libraries: %s", pid, line);
+			cpu_usage = calculate_cpu_usage(pid);
+			if (cpu_usage > 0.5)
+				printf("Process %d is using a lot of CPU: %f\n", pid, cpu_usage);
+		}
 	}
 	fclose(file);
 }
