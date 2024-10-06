@@ -7,11 +7,20 @@
 #include <poll.h>
 #include <string.h>
 #include <signal.h>
+#include <pthread.h>
 
 #define EVENT_SIZE  (sizeof(struct inotify_event))
 #define BUF_LEN     (1024 * (EVENT_SIZE + 16))
 #define READ_THRESHOLD 10
 volatile sig_atomic_t stop = 0;
+extern void	*scan_processes(void *arg);
+
+struct inotify_args
+{
+	int	argc;
+	char	**argv;
+};
+
 
 static void	terminate_handler(int signum)
 {
@@ -122,7 +131,7 @@ static void	set_signals(void)
 	sigaction(SIGINT, &sa, NULL);
 }
 
-int	notify(int argc, char **argv)
+void	*notify(void *args)
 {
 	int			fd;
 	int			i;
@@ -130,6 +139,11 @@ int	notify(int argc, char **argv)
 	int			*read_count;
 	nfds_t			nfds;
 	struct	pollfd		fds[2];
+	struct inotify_args	*inotify_args = (struct inotify_args *)args;
+
+	//Get arguments
+	int argc = inotify_args->argc;
+	char **argv = inotify_args->argv;
 
 	if (argc < 2) {
 		printf("Usage: %s <file1> <file2> ... <fileN>\n", argv[0]);
@@ -166,7 +180,6 @@ int	notify(int argc, char **argv)
 	fds[1].events = POLLIN;
 
 	//Set up signal handler
-	set_signals();
 	//Wait for events and/or terminal input
 	printf("Listening for events.\n");
 	iterate_loop(fds, nfds, fd, wd, read_count, argc, argv);
@@ -178,5 +191,45 @@ int	notify(int argc, char **argv)
 	free(wd);
 	free(read_count);
 	printf("Resources cleaned up. Exiting.\n");
+	return (NULL);
+}
+
+int	check_functions(int argc, char **argv)
+{
+	pthread_t		thread1;
+	pthread_t		thread2;
+	pthread_attr_t		attr;
+	int			ret;
+	struct inotify_args	args;
+
+	set_signals();
+	args.argc = argc;
+	args.argv = argv;
+	pthread_attr_init(&attr);
+	ret = pthread_create(&thread1, &attr, notify, (void *)&args);
+	if (ret)
+	{
+		fprintf(stderr, "Error - pthread_create() return code: %d\n", ret);
+		exit(EXIT_FAILURE);
+	}
+	ret = pthread_create(&thread2, NULL, scan_processes, NULL);
+	if (ret)
+	{
+		fprintf(stderr, "Error - pthread_create() return code: %d\n", ret);
+		exit(EXIT_FAILURE);
+	}
+	pthread_join(thread1, NULL);
+	pthread_join(thread2, NULL);
+	return (0);
+}
+
+int	main(int argc, char **argv)
+{
+	if (argc < 2)
+	{
+		printf("Usage: %s <file1> <file2> ... <fileN>\n", argv[0]);
+		exit(EXIT_FAILURE);
+	}
+	check_functions(argc, argv);
 	return (0);
 }

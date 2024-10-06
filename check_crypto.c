@@ -4,10 +4,17 @@
 #include <dirent.h>
 #include <unistd.h>
 #include <errno.h>
+#include <signal.h>
 
 #define BUF_SIZE 512
 
 extern float	calculate_cpu_usage(int pid);
+
+static void	terminate_child(int signum)
+{
+	(void)signum;
+	exit(0);
+}
 
 static void	check_crypto_libs(int pid)
 {
@@ -17,7 +24,6 @@ static void	check_crypto_libs(int pid)
 	float	cpu_usage;
 
 	snprintf(path, sizeof(path), "/proc/%d/maps", pid);
-	printf("Checking process %d\n", pid);
 	file = fopen(path, "r");
 	if (!file)
 	{
@@ -42,12 +48,27 @@ static void	check_crypto_libs(int pid)
 	fclose(file);
 }
 
-void	scan_processes(void)
+static void	set_signal_handler(void)
+{
+	struct sigaction	act;
+
+	act.sa_handler = terminate_child;
+	sigemptyset(&act.sa_mask);
+	act.sa_flags = 0;
+	if (sigaction(SIGINT, &act, NULL) == -1)
+	{
+		perror("sigaction error");
+		exit(1);
+	}
+}
+
+void	*scan_processes(void *arg)
 {
 	DIR		*dir;
 	struct dirent	*entry;
 	int		pid;
 
+	set_signal_handler();
 	dir = opendir("/proc");
 	if (!dir)
 	{
@@ -64,10 +85,6 @@ void	scan_processes(void)
 		}
 	}
 	closedir(dir);
-}
-
-int	main(void)
-{
-	scan_processes();
-	return (0);
+	(void)arg;
+	return (NULL);
 }
