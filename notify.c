@@ -14,6 +14,7 @@
 #define READ_THRESHOLD 10
 volatile sig_atomic_t stop = 0;
 extern void	*scan_processes(void *arg);
+extern void	mask_signals(void);
 
 struct inotify_args
 {
@@ -24,7 +25,7 @@ struct inotify_args
 
 static void	terminate_handler(int signum)
 {
-	printf("Terminating...\n");
+	printf("Pressed Ctrl+C\n");
 	(void)signum;
 	stop = 1;
 }
@@ -128,7 +129,11 @@ static void	set_signals(void)
 	sa.sa_handler = terminate_handler;
 	sigemptyset(&sa.sa_mask);
 	sa.sa_flags = 0;
-	sigaction(SIGINT, &sa, NULL);
+	if (sigaction(SIGINT, &sa, NULL) == -1)
+	{
+		perror("sigaction");
+		exit(EXIT_FAILURE);
+	}
 }
 
 void	*notify(void *args)
@@ -218,6 +223,7 @@ int	check_functions(int argc, char **argv)
 		fprintf(stderr, "Error - pthread_create() return code: %d\n", ret);
 		exit(EXIT_FAILURE);
 	}
+	mask_signals();
 	pthread_join(thread1, NULL);
 	pthread_join(thread2, NULL);
 	return (0);

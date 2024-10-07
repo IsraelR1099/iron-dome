@@ -9,12 +9,7 @@
 #define BUF_SIZE 512
 
 extern float	calculate_cpu_usage(int pid);
-
-static void	terminate_child(int signum)
-{
-	(void)signum;
-	exit(0);
-}
+extern void	mask_signals(void);
 
 static void	check_crypto_libs(int pid)
 {
@@ -48,27 +43,13 @@ static void	check_crypto_libs(int pid)
 	fclose(file);
 }
 
-static void	set_signal_handler(void)
-{
-	struct sigaction	act;
-
-	act.sa_handler = terminate_child;
-	sigemptyset(&act.sa_mask);
-	act.sa_flags = 0;
-	if (sigaction(SIGINT, &act, NULL) == -1)
-	{
-		perror("sigaction error");
-		exit(1);
-	}
-}
-
 void	*scan_processes(void *arg)
 {
 	DIR		*dir;
 	struct dirent	*entry;
 	int		pid;
 
-	set_signal_handler();
+	mask_signals();
 	dir = opendir("/proc");
 	if (!dir)
 	{
