@@ -36,7 +36,11 @@ static void	handle_events(int fd, int *wd, int *read_count, int argc, char *argv
 		__attribute__ ((aligned(__alignof__(struct inotify_event))));;
 	const struct inotify_event	*event;
 	ssize_t				len;
+	time_t				start_time;
+	int				time_window;
 
+	start_time = time(NULL);
+	time_window = 60;
 	//Loop while events can be read from inotify file descriptor
 	for (;;)
 	{
@@ -73,8 +77,15 @@ static void	handle_events(int fd, int *wd, int *read_count, int argc, char *argv
 			{
 				printf("Watching %s and read %d\n", argv[i], read_count[i]);
 				read_count[i]++;
-				if (read_count[i] > READ_THRESHOLD)
-					printf("WARNING: Possible disk read abuse detected.\n");
+				if (time(NULL) - start_time >= time_window)
+				{
+					if (read_count[i] > READ_THRESHOLD)
+					{
+						printf("WARNING: Possible disk read abuse detected.\n");
+						start_time = time(NULL);
+						read_count[i] = 0;
+					}
+				}
 				break ;
 			}
 		}

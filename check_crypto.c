@@ -10,6 +10,7 @@
 
 extern float	calculate_cpu_usage(int pid);
 extern void	mask_signals(void);
+extern volatile sig_atomic_t stop;
 
 static void	check_crypto_libs(int pid)
 {
@@ -50,22 +51,27 @@ void	*scan_processes(void *arg)
 	int		pid;
 
 	mask_signals();
-	dir = opendir("/proc");
-	if (!dir)
+	while (!stop)
 	{
-		perror("opendir error");
-		exit(1);
-	}
-	while ((entry = readdir(dir)) != NULL)
-	{
-		if (entry->d_type == DT_DIR)
+		dir = opendir("/proc");
+		if (!dir)
 		{
-			pid = atoi(entry->d_name);
-			if (pid > 0)
-				check_crypto_libs(pid);
+			perror("opendir error");
+			exit(1);
 		}
+		while ((entry = readdir(dir)) != NULL)
+		{
+			if (entry->d_type == DT_DIR)
+			{
+				pid = atoi(entry->d_name);
+				if (pid > 0)
+					check_crypto_libs(pid);
+			}
+		}
+		closedir(dir);
+		sleep(30);
 	}
-	closedir(dir);
 	(void)arg;
+	printf("scan_processes thread is exiting\n");
 	return (NULL);
 }
