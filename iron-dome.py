@@ -14,8 +14,8 @@ def send_args(files):
     arr = (c_char_p * len(files_in_bytes))(*files_in_bytes)
 
     # Pass the array to the C function
-    print(f"len of files: {len(files_in_bytes)}")
-    clibrary.notify(len(files_in_bytes), arr)
+    clibrary.check_functions(len(files_in_bytes), arr)
+    print("Files scanned")
 
 
 if __name__ == '__main__':
