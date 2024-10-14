@@ -15,6 +15,7 @@
 volatile sig_atomic_t stop = 0;
 extern void	*scan_processes(void *arg);
 extern void	mask_signals(void);
+extern void	*entropy(void *argv);
 
 struct inotify_args
 {
@@ -214,6 +215,7 @@ int	check_functions(int argc, char **argv)
 {
 	pthread_t		thread1;
 	pthread_t		thread2;
+	pthread_t		thread3;
 	pthread_attr_t		attr;
 	int			ret;
 	struct inotify_args	args;
@@ -234,12 +236,19 @@ int	check_functions(int argc, char **argv)
 		fprintf(stderr, "Error - pthread_create() return code: %d\n", ret);
 		exit(EXIT_FAILURE);
 	}
+	ret = pthread_create(&thread3, NULL, entropy, (void *)argv);
+	if (ret)
+	{
+		fprintf(stderr, "Error - pthread_create() return code: %d\n", ret);
+		exit(EXIT_FAILURE);
+	}
 	mask_signals();
 	pthread_join(thread1, NULL);
 	pthread_join(thread2, NULL);
+	pthread_join(thread3, NULL);
 	return (0);
 }
-/*
+
 int	main(int argc, char **argv)
 {
 	if (argc < 2)
@@ -249,4 +258,4 @@ int	main(int argc, char **argv)
 	}
 	check_functions(argc, argv);
 	return (0);
-}*/
+}
