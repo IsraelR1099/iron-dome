@@ -12,10 +12,12 @@
 #define EVENT_SIZE  (sizeof(struct inotify_event))
 #define BUF_LEN     (1024 * (EVENT_SIZE + 16))
 #define READ_THRESHOLD 10
-volatile sig_atomic_t stop = 0;
-extern void	*scan_processes(void *arg);
-extern void	mask_signals(void);
-extern void	*entropy(void *argv);
+volatile sig_atomic_t	stop = 0;
+extern void		*scan_processes(void *arg);
+extern void		mask_signals(void);
+extern void		*entropy(void *argv);
+extern void		alert(const char *message);
+pthread_mutex_t		mutex = PTHREAD_MUTEX_INITIALIZER;
 
 struct inotify_args
 {
@@ -39,13 +41,15 @@ static void	handle_events(int fd, int *wd, int *read_count, int argc, char *argv
 	ssize_t				len;
 	time_t				start_time;
 	int				time_window;
+	char				buffer[100];
 
 	start_time = time(NULL);
-	time_window = 60;
+	time_window = 30;
 	//Loop while events can be read from inotify file descriptor
 	for (;;)
 	{
 		len = read(fd, buf, sizeof(buf));
+		memset(buffer, 0, 100);
 		if (len < 0 && errno != EAGAIN)
 		{
 			if (errno == EINTR)
@@ -71,7 +75,6 @@ static void	handle_events(int fd, int *wd, int *read_count, int argc, char *argv
 			if (event->mask & IN_ACCESS)
 				printf("File %s was accessed\n", event->name);
 		}
-		//Print the name of the watched directory
 		for (size_t i = 1; i < (size_t)argc; i++)
 		{
 			if (wd[i] == event->wd)
@@ -83,6 +86,8 @@ static void	handle_events(int fd, int *wd, int *read_count, int argc, char *argv
 					if (read_count[i] > READ_THRESHOLD)
 					{
 						printf("WARNING: Possible disk read abuse detected.\n");
+						snprintf(buffer, sizeof(buffer), "WARNING: Possible disk read abuse detected on file %s\n", argv[i]);
+						alert(buffer);
 						start_time = time(NULL);
 						read_count[i] = 0;
 					}
@@ -224,6 +229,7 @@ int	check_functions(int argc, char **argv)
 	args.argc = argc;
 	args.argv = argv;
 	pthread_attr_init(&attr);
+	pthread_mutex_init(&mutex, NULL);
 	ret = pthread_create(&thread1, &attr, notify, (void *)&args);
 	if (ret)
 	{
@@ -246,16 +252,6 @@ int	check_functions(int argc, char **argv)
 	pthread_join(thread1, NULL);
 	pthread_join(thread2, NULL);
 	pthread_join(thread3, NULL);
-	return (0);
-}
-
-int	main(int argc, char **argv)
-{
-	if (argc < 2)
-	{
-		printf("Usage: %s <file1> <file2> ... <fileN>\n", argv[0]);
-		exit(EXIT_FAILURE);
-	}
-	check_functions(argc, argv);
+	pthread_mutex_destroy(&mutex);
 	return (0);
 }

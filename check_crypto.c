@@ -8,18 +8,22 @@
 
 #define BUF_SIZE 512
 
-extern float	calculate_cpu_usage(int pid);
-extern void	mask_signals(void);
-extern volatile sig_atomic_t stop;
+extern float                    calculate_cpu_usage(int pid);
+extern void                     mask_signals(void);
+extern volatile sig_atomic_t    stop;
+extern void                     alert(const char *message);
 
-static void	check_crypto_libs(int pid)
+static void check_crypto_libs(int pid)
 {
 	char	path[BUF_SIZE];
 	char	line[BUF_SIZE];
 	FILE	*file;
 	float	cpu_usage;
+	char	buffer[100];
+	char	info[1024];
 
 	snprintf(path, sizeof(path), "/proc/%d/maps", pid);
+    memset(buffer, 0, sizeof(buffer));
 	file = fopen(path, "r");
 	if (!file)
 	{
@@ -29,16 +33,22 @@ static void	check_crypto_libs(int pid)
 	}
 	while (fgets(line, sizeof(line), file))
 	{
+        memset(info, 0, sizeof(info));
 		if (strstr(line, "libcrypto")
 				|| strstr(line, "libssl")
 				|| strstr(line, "libcrypt")
 				|| strstr(line, "openssl")
 				|| strstr(line, "gpg"))
 		{
-			printf("Process %d is using crypto libraries: %s", pid, line);
+			printf("INFO: Process %d is using crypto libraries: %s", pid, line);
+            snprintf(info, sizeof(info), "INFO: Process %d is using crypto libraries: %s", pid, line);
+            alert(info);
 			cpu_usage = calculate_cpu_usage(pid);
 			if (cpu_usage > 0.5)
-				printf("Process %d is using a lot of CPU: %f\n", pid, cpu_usage);
+            {
+                snprintf(buffer, sizeof(buffer), "WARNING: Process %d is using a lot of CPU: %f\n", pid, cpu_usage);
+                alert(buffer);
+            }
 		}
 	}
 	fclose(file);
@@ -46,9 +56,9 @@ static void	check_crypto_libs(int pid)
 
 void	*scan_processes(void *arg)
 {
-	DIR		*dir;
-	struct dirent	*entry;
-	int		pid;
+	DIR             *dir;
+	struct dirent   *entry;
+	int             pid;
 
 	mask_signals();
 	while (!stop)
