@@ -8,6 +8,7 @@
 
 extern void			mask_signals(void);
 extern volatile sig_atomic_t	stop;
+extern void			alert(const char *msg);
 
 typedef struct s_file_entropy
 {
@@ -50,10 +51,12 @@ static void	iter_file(char *file, unsigned char data[], t_file_entropy *file_inf
 	float	current_entropy;
 	float	entropy_change;
 	float	percent_change;
+	char	msg[1024];
 
 	fp = fopen(file, "rb");
 	entropy_change = 0.0;
 	percent_change = 0.0;
+	memset(msg, 0, sizeof(msg));
 	printf("initial entropy of %s: %f\n", file, file_info->baseline_entropy);
 	if (fp)
 	{
@@ -73,6 +76,8 @@ static void	iter_file(char *file, unsigned char data[], t_file_entropy *file_inf
 				if (percent_change > 5.0)
 				{
 					printf("Warning: %s's entropy has changed by %f%%\n", file, percent_change);
+					snprintf(msg, sizeof(msg), "Warning: %s's entropy has changed by %f%%\n", file, percent_change);
+					alert(msg);
 					file_info->baseline_entropy = current_entropy;
 				}
 			}
