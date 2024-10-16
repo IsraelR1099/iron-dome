@@ -13,7 +13,7 @@ float	get_uptime(void)
 	fd = open("/proc/uptime", O_RDONLY);
 	if (fd < 0)
 	{
-		perror("open error");
+		perror("open error get_uptime");
 		exit (1);
 	}
 	memset(buf, 0, sizeof(buf));
@@ -24,6 +24,7 @@ float	get_uptime(void)
 			break ;
 	}
 	buf[i] = '\0';
+	close(fd);
 	return (atof(buf));
 }
 
@@ -39,7 +40,7 @@ char	*get_proc_stat(int pid)
 	fd = open(path, O_RDONLY);
 	if (fd < 0)
 	{
-		perror("open error");
+		perror("open error get_proc");
 		exit (1);
 	}
 	read_bytes = read(fd, buf, 256);
@@ -50,6 +51,7 @@ char	*get_proc_stat(int pid)
 	}
 	buf[read_bytes] = '\0';
 	ret = strdup(buf);
+	close(fd);
 	return (ret);
 }
 

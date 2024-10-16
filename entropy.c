@@ -162,7 +162,7 @@ void	*entropy(void *argv)
 			}
 			if (S_ISDIR(st.st_mode))
 			{
-				fprintf(stderr, "%s: is a directory\n", files[i]);
+				fprintf(stderr, "%s: is a directory. Cannot calculate entropy of a directory\n", files[i]);
 				continue ;
 			}
 			else
