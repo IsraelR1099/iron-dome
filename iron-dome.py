@@ -23,7 +23,6 @@ def send_args(files):
 if __name__ == '__main__':
     files = []
     if os.getuid() == 0:
-        print(f"len of sys args: {len(sys.argv)}")
         if len(sys.argv) < 2:
             print("No arguments provided, scanning /etc, /var/log, /home")
             files.append("/etc")
@@ -37,7 +36,11 @@ if __name__ == '__main__':
                     files.append(arg)
                 elif os.path.isfile(arg):
                     files.append(arg)
-                print(arg)
+                else:
+                    print("Invalid argument: ", arg)
+            if len(files) <= 1:
+                print("No valid files to scan")
+                sys.exit(1)
             send_args(files)
     else:
         print('You need to be root to run this script')

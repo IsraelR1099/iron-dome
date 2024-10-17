@@ -5,6 +5,7 @@
 #include <math.h>
 #include <signal.h>
 #include <sys/stat.h>
+#include "notify.h"
 
 extern void			mask_signals(void);
 extern volatile sig_atomic_t	stop;
@@ -73,10 +74,10 @@ static void	iter_file(char *file, unsigned char data[], t_file_entropy *file_inf
 				entropy_change = fabs(current_entropy - file_info->baseline_entropy);
 				percent_change = (entropy_change / file_info->baseline_entropy) * 100;
 				printf("Entropy change of %s: %f (%f%%)\n", file, entropy_change, percent_change);
-				if (percent_change > 5.0)
+				if (percent_change > 2.5)
 				{
-					printf("Warning: %s's entropy has changed by %f%%\n", file, percent_change);
-					snprintf(msg, sizeof(msg), "Warning: %s's entropy has changed by %f%%\n", file, percent_change);
+					printf("WARNING: %s's entropy has changed by %f%%\n", file, percent_change);
+					snprintf(msg, sizeof(msg), "WARNING: entropy has changed on file %s by %f%%\n", file, percent_change);
 					alert(msg);
 					file_info->baseline_entropy = current_entropy;
 				}
@@ -100,11 +101,12 @@ static void	iter_file(char *file, unsigned char data[], t_file_entropy *file_inf
 static int	ft_len(void *argv)
 {
 	int	i;
-	char	**files;
+	struct inotify_args	*args;
 
-	files = (char **)argv;
-	for (i = 0; files[i]; i++)
-		;
+	args = (struct inotify_args *)argv;
+	i = 0;
+	while (args->argv[i] != NULL)
+		i++;
 	return (i);
 }
 
@@ -139,21 +141,25 @@ void	*entropy(void *argv)
 		'\xf6', '\xf7', '\xf8', '\xf9', '\xfa', '\xfb', '\xfc', '\xfd',
 		'\xfe', '\xff'
 	};
-	int		i;
-	struct stat	st;
-	char		**files;
-	t_file_entropy	file_info[ft_len(argv)];
+	int			i;
+	struct stat		st;
+	struct inotify_args	*arguments;
+	int			argc;
+	char			**files;
+	t_file_entropy		file_info[ft_len(argv)];
 
 	mask_signals();
-	files = (char **)argv;
-	for (i = 1; files[i]; i++)
+	arguments = (struct inotify_args *)argv;
+	argc = arguments->argc;
+	files = arguments->argv;
+	for (i = 1; i < argc; i++)
 	{
 		file_info[i - 1].file = files[i];
 		file_info[i - 1].baseline_entropy = -1;
 	}
 	while (!stop)
 	{
-		for (i = 1; files[i]; i++)
+		for (i = 1; i < argc; i++)
 		{
 			if (stat(files[i], &st) == -1)
 			{

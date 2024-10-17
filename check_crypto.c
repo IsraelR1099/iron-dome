@@ -36,15 +36,18 @@ static void check_crypto_libs(int pid)
 				|| strstr(line, "libssl")
 				|| strstr(line, "libcrypt")
 				|| strstr(line, "openssl")
-				|| strstr(line, "gpg"))
+				|| strstr(line, "gpg")
+				|| strstr(line, "python"))
 		{
 			printf("INFO: Process %d is using crypto libraries: %s", pid, line);
 			cpu_usage = calculate_cpu_usage(pid);
 			if (cpu_usage > 0.5)
-            {
-                snprintf(buffer, sizeof(buffer), "WARNING: Process %d is using a lot of CPU and crypto libraries: %f\n", pid, cpu_usage);
-                alert(buffer);
-            }
+            		{
+				printf("\033[1;31mWARNING: Process %d is using a lot of CPU and crypto libraries: %f\033[0m\n", pid, cpu_usage);
+				snprintf(buffer, sizeof(buffer), "WARNING: Process %d is using a lot of CPU and crypto libraries: %f\n", pid, cpu_usage);
+				snprintf(buffer, sizeof(buffer), "WARNING: The followed process is using a lot of CPU and crypto libraries: %d, %f\n", pid, cpu_usage);
+				alert(buffer);
+			}
 		}
 	}
 	fclose(file);

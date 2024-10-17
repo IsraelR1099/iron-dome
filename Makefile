@@ -14,6 +14,8 @@ LOG_FILE := /var/log/irondome.log
 
 all: $(LIBRARY) log
 	chmod +x iron-dome.py
+	chmod +x test_crypto.py
+	chmod +x test-suite.sh
 
 $(LIBRARY): $(OBJS)
 	$(CC) $(LDFLAGS) -o $@ $(OBJS) -lm -lpthread

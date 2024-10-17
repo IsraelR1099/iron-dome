@@ -8,6 +8,7 @@
 #include <string.h>
 #include <signal.h>
 #include <pthread.h>
+#include "notify.h"
 
 #define EVENT_SIZE  (sizeof(struct inotify_event))
 #define BUF_LEN     (1024 * (EVENT_SIZE + 16))
@@ -18,12 +19,6 @@ extern void		mask_signals(void);
 extern void		*entropy(void *argv);
 extern void		alert(const char *message);
 pthread_mutex_t		mutex = PTHREAD_MUTEX_INITIALIZER;
-
-struct inotify_args
-{
-	int	argc;
-	char	**argv;
-};
 
 
 static void	terminate_handler(int signum)
@@ -79,13 +74,12 @@ static void	handle_events(int fd, int *wd, int *read_count, int argc, char *argv
 		{
 			if (wd[i] == event->wd)
 			{
-				printf("Watching %s and read %d\n", argv[i], read_count[i]);
 				read_count[i]++;
 				if (time(NULL) - start_time >= time_window)
 				{
 					if (read_count[i] > READ_THRESHOLD)
 					{
-						printf("WARNING: Possible disk read abuse detected.\n");
+						printf("\033[1;31mWARNING: Possible disk read abuse detected on file %s\033[0m\n", argv[i]);
 						snprintf(buffer, sizeof(buffer), "WARNING: Possible disk read abuse detected on file %s\n", argv[i]);
 						alert(buffer);
 						start_time = time(NULL);
@@ -242,7 +236,7 @@ int	check_functions(int argc, char **argv)
 		fprintf(stderr, "Error - pthread_create() return code: %d\n", ret);
 		exit(EXIT_FAILURE);
 	}
-	ret = pthread_create(&thread3, NULL, entropy, (void *)argv);
+	ret = pthread_create(&thread3, NULL, entropy, (void *)&args);
 	if (ret)
 	{
 		fprintf(stderr, "Error - pthread_create() return code: %d\n", ret);
