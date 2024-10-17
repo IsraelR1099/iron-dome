@@ -7,7 +7,11 @@ from ctypes import *
 
 
 def send_args(files):
-    clibrary = ctypes.CDLL("./clibnotify.so")
+    try:
+        clibrary = ctypes.CDLL("./clibnotify.so")
+    except OSError:
+        print("Error loading the shared library")
+        sys.exit(1)
 
     # Conver the Python string lsit to bytes
     files_in_bytes = [file.encode('utf-8') for file in files]
