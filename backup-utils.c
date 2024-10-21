@@ -8,31 +8,40 @@
 #include <dirent.h>
 #include "notify.h"
 
-/*bool	check_modification_time(char *dir, long long int time)
+static void	add_create_dirtree(char *entry, char *dir, t_dir **dir_tree, int count)
 {
-	printf("dir en check modification %s\n", dir);
-	printf("time %lld\n", time);
-	return (false);
-}
-*/
-static void	add_create_dirtree(char *entry, char *dir, t_dir_tree **dir_tree)
-{
-	int				i;
-	int				j;
-	unsigned int	size;
+	int		i;
+	struct stat	st;
+	char		file_path[1024];
+
 
 	i = 0;
-	j = 0;
+	if (strstr(entry, dir) == NULL)
+		snprintf(file_path, sizeof(file_path), "%s/%s", dir, entry);
+	else
+		snprintf(file_path, sizeof(file_path), "%s", entry);
 	while (dir_tree[i])
 	{
 		if (strcmp(dir_tree[i]->base_dir, dir) != 0)
 			continue ;
-		while (dir_tree[i]->tree[j])
+		else
 		{
-			size = sizeof(dir_tree[i]->tree[j]->file_name);
-			strncpy(dir_tree[i]->tree[j]->file_name, entry, size - 1);
-			dir_tree[i]->tree[j]->file_name[size] = '\0';
-			j++;
+			if (stat(file_path, &st) == -1)
+			{
+				perror("stat error");
+				exit (1);
+			}
+			dir_tree[i]->tree[count] = (t_file_info *)malloc(sizeof(t_file_info));
+			if (!dir_tree[i]->tree[count])
+			{
+				perror("malloc error");
+				exit (1);
+			}
+			strncpy(dir_tree[i]->tree[count]->file_name, entry, sizeof(dir_tree[i]->tree[count]->file_name) - 1);
+			dir_tree[i]->tree[count]->file_name[sizeof(dir_tree[i]->tree[count]->file_name) - 1] = '\0';
+			dir_tree[i]->tree[count]->baseline_mtime = st.st_mtime;
+			printf("File: %s, mtime: %lld\n", dir_tree[i]->tree[count]->file_name, dir_tree[i]->tree[count]->baseline_mtime);
+			break ;
 		}
 		i++;
 	}
@@ -50,10 +59,8 @@ static size_t	count_files(char *dir)
 		perror("opendir error");
 		exit (1);
 	}
-	printf("dir es %s\n", dir);
 	while ((entry = readdir(dp)) != NULL)
 	{
-		printf("entry es %s\n", entry->d_name);
 		if (strcmp(entry->d_name, ".") == 0
 				|| strcmp(entry->d_name, "..") == 0)
 			continue ;
@@ -62,6 +69,7 @@ static size_t	count_files(char *dir)
 		else
 			ret++;
 	}
+	closedir(dp);
 	return (ret);
 }
 
@@ -77,7 +85,6 @@ static void	init_mtime_main_dir(char *dir, t_dir **dir_tree)
 		if (strcmp(dir_tree[i]->base_dir, dir) == 0)
 		{
 			nbr_files = count_files(dir);
-			printf("nbr_files es %ld", nbr_files);
 			if (stat(dir_tree[i]->base_dir, &st) == -1)
 			{
 				perror("stat error");
@@ -90,7 +97,7 @@ static void	init_mtime_main_dir(char *dir, t_dir **dir_tree)
 				perror("malloc error");
 				exit (1);
 			}
-			for (int j = 0; j < nbr_files; j++)
+			for (int j = 0; j < (int)nbr_files; j++)
 				dir_tree[i]->tree[j] = NULL;
 			dir_tree[i]->tree[nbr_files] = NULL;
 			break ;
@@ -99,17 +106,56 @@ static void	init_mtime_main_dir(char *dir, t_dir **dir_tree)
 	}
 }
 
+static void	track_recursive(char *main_dir, char *file_path, t_dir **dir_tree, int *count)
+{
+	DIR		*dp;
+	struct dirent	*entry;
+	char		new_file_path[1024];
+
+	if ((dp = opendir(file_path)) == NULL)
+	{
+		perror("opendir error");
+		exit (1);
+	}
+	while ((entry = readdir(dp)) != NULL)
+	{
+		if (strcmp(entry->d_name, ".") == 0
+				|| strcmp(entry->d_name, "..") == 0)
+			continue ;
+		if (entry->d_type == DT_DIR)
+		{
+
+			snprintf(new_file_path, sizeof(new_file_path), "%s/%s", file_path, entry->d_name);
+			track_recursive(main_dir, new_file_path, dir_tree, count);
+		}
+		else
+		{
+			if (DEBUG)
+			{
+				printf("file_path es %s\n", file_path);
+				printf("entry->d_name es %s\n", entry->d_name);
+			}
+			snprintf(new_file_path, sizeof(new_file_path), "%s/%s", file_path, entry->d_name);
+			add_create_dirtree(new_file_path, main_dir, dir_tree, *count);
+			*count += 1;
+		}
+	}
+	closedir(dp);
+}
+
 void	track_dir_mtime(char *dir, t_dir **dir_tree)
 {
 	DIR				*dp;
 	struct dirent	*entry;
 	char			file_path[1024];
+	int			count;
 
 	if ((dp = opendir(dir)) == NULL)
 	{
 		perror("opendir error");
 		exit (1);
 	}
+	count = 0;
 	init_mtime_main_dir(dir, dir_tree);
 	while ((entry = readdir(dp)) != NULL)
 	{
@@ -119,13 +165,15 @@ void	track_dir_mtime(char *dir, t_dir **dir_tree)
 		if (entry->d_type == DT_DIR)
 		{
 			snprintf(file_path, sizeof(file_path), "%s/%s", dir, entry->d_name);
-			printf("dir found in track_dir_mtime\n");
+			track_recursive(dir, file_path, dir_tree, &count);
 		}
 		else
 		{
-			add_create_dirtree(entry->d_name, dir, dir_tree);
+			add_create_dirtree(entry->d_name, dir, dir_tree, count);
+			count++;
 		}
 	}
+	closedir(dp);
 }
 
 t_dir	**count_dirs(int argc, t_file_info *info)
@@ -151,7 +199,7 @@ t_dir	**count_dirs(int argc, t_file_info *info)
 	}
 	if (count != 0)
 	{
-		dirs = (t_dir **)malloc(sizeof(t_dir *) * count);
+		dirs = (t_dir **)malloc(sizeof(t_dir *) * (count + 1));
 		if (!dirs)
 		{
 			perror("malloc error");
