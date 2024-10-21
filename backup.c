@@ -197,7 +197,7 @@ static void	check_modification(t_file_info *info, t_dir **track_dir, bool is_dir
 			if (DEBUG)
 				printf("directory1 %s and base dir %s\n", info->file, dst_dir);
 			create_backup_directory(info->file, "./backup/", true);
-			//track_dir_mtime(info->file, track_dir);
+			track_dir_mtime(info->file, track_dir);
 		}
 		else
 		{
@@ -256,7 +256,6 @@ int	main(int argc, char **argv)
 		exit (1);
 	}
 	track_dir = count_dirs(argc, info);
-	exit (1);
 	while (1)
 	{
 		for (i = 0; i < argc - 1; i++)
