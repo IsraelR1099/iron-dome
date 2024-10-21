@@ -179,7 +179,7 @@ static void	create_backup_directory(char *src_dir, char *backup, bool first_time
 	}
 }
 
-static void	check_modification(t_file_info *info, t_file_info **track_dir, bool is_dir, char *dst_dir)
+static void	check_modification(t_file_info *info, t_dir **track_dir, bool is_dir, char *dst_dir)
 {
 	struct stat	st;
 	char		file_path[1024];
@@ -197,6 +197,7 @@ static void	check_modification(t_file_info *info, t_file_info **track_dir, bool 
 			if (DEBUG)
 				printf("directory1 %s and base dir %s\n", info->file, dst_dir);
 			create_backup_directory(info->file, "./backup/", true);
+			//track_dir_mtime(info->file, track_dir);
 		}
 		else
 		{
@@ -208,10 +209,11 @@ static void	check_modification(t_file_info *info, t_file_info **track_dir, bool 
 	{
 		if (is_dir)
 		{
-			if (check_modification_time(info->file, info->baseline_mtime))
+			printf("directory checking\n");
+	/*		if (check_modification_time(info->file, info->baseline_mtime))
 			{
 				printf("\033[33mdirectory %s has been modified\033[0m\n", info->file);
-			}
+			}*/
 		}
 		else
 		{
@@ -229,7 +231,7 @@ static void	check_modification(t_file_info *info, t_file_info **track_dir, bool 
 int	main(int argc, char **argv)
 {
 	t_file_info	info[argc - 1];
-	t_file_info	*track_dir;
+	t_dir		**track_dir;
 	int		i;
 	struct stat	st;
 	char		*dst_dir = "backup/";
@@ -253,6 +255,8 @@ int	main(int argc, char **argv)
 		perror("mkdir error");
 		exit (1);
 	}
+	track_dir = count_dirs(argc, info);
+	exit (1);
 	while (1)
 	{
 		for (i = 0; i < argc - 1; i++)
@@ -266,11 +270,11 @@ int	main(int argc, char **argv)
 			}
 			if (S_ISDIR(st.st_mode))
 			{
-				check_modification(&info[i], &track_dir, true, dst_dir);
+				check_modification(&info[i], track_dir, true, dst_dir);
 			}
 			else
 			{
-				check_modification(&info[i], &track_dir, false, dst_dir);
+				check_modification(&info[i], track_dir, false, dst_dir);
 			}
 		}
 		sleep(15);
