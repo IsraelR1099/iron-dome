@@ -6,6 +6,7 @@
 #endif
 
 #include <stdbool.h>
+#include <limits.h>
 
 struct	inotify_args
 {
@@ -16,6 +17,7 @@ struct	inotify_args
 typedef struct	s_file_info
 {
 	char		*file;
+	char		full_path[1024];
 	char		file_name[1024];
 	long long	baseline_mtime;
 }	t_file_info;
@@ -41,5 +43,6 @@ typedef struct s_dir
 bool	check_modification_time(char *dir, long long baseline_mtime);
 t_dir	**count_dirs(int argc, t_file_info *info);
 void	track_dir_mtime(char *dir, t_dir **dir_tree);
+bool	check_dir_mtime(char *main_dir, t_dir **track_dir);
 
 #endif

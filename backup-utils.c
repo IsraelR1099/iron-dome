@@ -10,12 +10,16 @@
 
 static void	add_create_dirtree(char *entry, char *dir, t_dir **dir_tree, int count)
 {
-	int		i;
+	int			i;
 	struct stat	st;
 	char		file_path[1024];
 
-
 	i = 0;
+	if (DEBUG)
+	{
+		printf("entry es %s\n", entry);
+		printf("dir es %s\n", dir);
+	}
 	if (strstr(entry, dir) == NULL)
 		snprintf(file_path, sizeof(file_path), "%s/%s", dir, entry);
 	else
@@ -52,11 +56,14 @@ static size_t	count_files(char *dir)
 	DIR				*dp;
 	struct dirent	*entry;
 	size_t			ret;
+	char			error_msg[1024];
+	char			file_path[1024];
 
 	ret = 0;
 	if ((dp = opendir(dir)) == NULL)
 	{
-		perror("opendir error");
+		snprintf(error_msg, sizeof(error_msg), "Error opening directory '%s'", dir);
+		perror(error_msg);
 		exit (1);
 	}
 	while ((entry = readdir(dp)) != NULL)
@@ -65,7 +72,10 @@ static size_t	count_files(char *dir)
 				|| strcmp(entry->d_name, "..") == 0)
 			continue ;
 		if (entry->d_type == DT_DIR)
-			ret += count_files(entry->d_name);
+		{
+			snprintf(file_path, sizeof(file_path), "%s/%s", dir, entry->d_name);
+			ret += count_files(file_path);
+		}
 		else
 			ret++;
 	}
@@ -108,12 +118,18 @@ static void	init_mtime_main_dir(char *dir, t_dir **dir_tree)
 
 static void	track_recursive(char *main_dir, char *file_path, t_dir **dir_tree, int *count)
 {
-	DIR		*dp;
+	DIR				*dp;
 	struct dirent	*entry;
-	char		new_file_path[1024];
+	char			new_file_path[1024];
 
+	if (DEBUG)
+	{
+		printf("main_dir es %s\n", main_dir);
+		printf("file_path es %s\n", file_path);
+	}
 	if ((dp = opendir(file_path)) == NULL)
 	{
+		printf("file_path es %s\n", file_path);
 		perror("opendir error");
 		exit (1);
 	}
@@ -148,15 +164,19 @@ void	track_dir_mtime(char *dir, t_dir **dir_tree)
 	DIR				*dp;
 	struct dirent	*entry;
 	char			file_path[1024];
-	int			count;
+	int				count;
 
+	if (DEBUG)
+		printf("dir track_dir_mtime es %s\n", dir);
 	if ((dp = opendir(dir)) == NULL)
 	{
+		printf("dir es %s\n", dir);
 		perror("opendir error");
 		exit (1);
 	}
 	count = 0;
 	init_mtime_main_dir(dir, dir_tree);
+	printf("despues de init_mtime_main_dir\n");
 	while ((entry = readdir(dp)) != NULL)
 	{
 		if (strcmp(entry->d_name, ".") == 0
@@ -165,11 +185,14 @@ void	track_dir_mtime(char *dir, t_dir **dir_tree)
 		if (entry->d_type == DT_DIR)
 		{
 			snprintf(file_path, sizeof(file_path), "%s/%s", dir, entry->d_name);
+			if (DEBUG)
+				printf("file_path es %s\n", file_path);
 			track_recursive(dir, file_path, dir_tree, &count);
 		}
 		else
 		{
-			add_create_dirtree(entry->d_name, dir, dir_tree, count);
+			snprintf(file_path, sizeof(file_path), "%s/%s", dir, entry->d_name);
+			add_create_dirtree(file_path, dir, dir_tree, count);
 			count++;
 		}
 	}
