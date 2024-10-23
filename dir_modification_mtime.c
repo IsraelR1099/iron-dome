@@ -15,6 +15,11 @@ static void	create_new_backup(char *file, char *main_dir, t_dir **track_dir)
 	char	error_msg[1024];
 	int		n;
 
+	if (DEBUG)
+	{
+		printf("file en create_new_backup %s\n", file);
+		printf("main_dir %s\n", main_dir);
+	}
 	snprintf(back_file, sizeof(back_file), "backup/%s.bak", file);
 	if ((fd = open(file, O_RDONLY)) < 0)
 	{
