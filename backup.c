@@ -5,16 +5,23 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <stdbool.h>
+#include <pwd.h>
 #include <dirent.h>
 #include <string.h>
 #include <sys/types.h>
 #include <errno.h>
+#include <signal.h>
+
+//extern void						mask_signals(void);
+//extern volatile sig_atomic_t	stop;
+int			stop = 0;
+extern void	alert(const char *msg);
 
 static void	create_backup_file(char *file, char *dst_dir)
 {
 	int	fd;
 	char	backup_file[256];
-	char	buf[4096];
+	char	buf[10000];
 	int	n;
 
 	if (DEBUG)
@@ -130,14 +137,11 @@ static void	create_backup_directory(char *src_dir, char *backup, bool first_time
 		snprintf(backup_dir, sizeof(backup_dir), "%s%s.bak", backup, src_dir);
 	else
 	{
-		printf("entro en create backup directory else\n");
 		if (endswith(backup, "/"))
 			snprintf(backup_dir, sizeof(backup_dir), "%s.bak", backup);
 		else
 			snprintf(backup_dir, sizeof(backup_dir), "%s.bak/", backup);
 	}
-	if (DEBUG)
-		printf("backup dir create_dir %s\n", backup_dir);
 	create_dir(backup_dir);
 	strncpy(tmp_dir, backup_dir, strlen(backup_dir));
 	if ((dp = opendir(src_dir)) == NULL)
@@ -156,8 +160,6 @@ static void	create_backup_directory(char *src_dir, char *backup, bool first_time
 			if (entry->d_type == DT_DIR)
 			{
 				snprintf(src_path, sizeof(src_path), "%s/%s", src_dir, entry->d_name);
-				if (DEBUG)
-					printf("backup before %s and tmp dir %s\n", backup_dir, tmp_dir);
 				if (snprintf(backup_dir, sizeof(backup_dir), "%s", tmp_dir) >= (int)sizeof(backup_dir))
 					continue;
 				if (endswith(backup_dir, "/"))
@@ -166,13 +168,6 @@ static void	create_backup_directory(char *src_dir, char *backup, bool first_time
 				{
 					strncat(backup_dir, "/", remaining_space);
 					strncat(backup_dir, entry->d_name, remaining_space);
-				}
-				if (DEBUG)
-					printf("backup after %s\n", backup_dir);
-				if (DEBUG)
-				{
-					printf("src path %s\n", src_path);
-					printf("backup dir befosrc_dirre %s\n", backup_dir);
 				}
 				create_backup_directory(src_path, backup_dir, false);
 			}
@@ -190,8 +185,6 @@ static void	create_backup_directory(char *src_dir, char *backup, bool first_time
 					strncat(backup_dir, "/", remaining_space);
 					strncat(backup_dir, entry->d_name, remaining_space);
 				}
-				if (DEBUG)
-					printf("backup dir file %s\n", backup_dir);
 				create_backup_file(src_path, backup_dir);
 			}
 		}
@@ -211,6 +204,7 @@ static void	check_modification(t_file_info *info, t_dir **track_dir, bool is_dir
 {
 	struct stat	st;
 	char		file_path[1024];
+	char		msg[1024];
 
 	if (stat(info->file, &st) == -1)
 	{
@@ -222,10 +216,9 @@ static void	check_modification(t_file_info *info, t_dir **track_dir, bool is_dir
 		info->baseline_mtime = st.st_mtime;
 		if (is_dir)
 		{
-			if (DEBUG)
-				printf("directory1 %s and base dir %s\n", info->file, dst_dir);
-			create_backup_directory(info->file, "./backup/", true);
+			create_backup_directory(info->file, dst_dir, true);
 			track_dir_mtime(info->file, track_dir);
+			create_backup_dir(info->file, track_dir);
 		}
 		else
 		{
@@ -241,29 +234,49 @@ static void	check_modification(t_file_info *info, t_dir **track_dir, bool is_dir
 			if (check_dir_mtime(info->file, track_dir))
 			{
 				printf("\033[33mdirectory %s has been modified\033[0m\n", info->file);
+				snprintf(msg, sizeof(msg), "directory %s has been modified", info->file);
+				//alert(msg);
 			}
 		}
 		else
 		{
-			if (info->baseline_mtime != st.st_mtime)
+			printf("file checking\n");
+			printf("baseline %lld and st mtime %ld\n", info->baseline_mtime, st.st_mtime);
+			if (info->baseline_mtime < st.st_mtime)
 			{
 				printf("\033[33mfile %s has been modified\033[0m\n", info->file);
+				snprintf(msg, sizeof(msg), "file %s has been modified", info->file);
+				//alert(msg);
 				snprintf(file_path, sizeof(file_path), "%s%s", dst_dir, info->file);
 				create_backup_file(info->file, file_path);
+				info->baseline_mtime = st.st_mtime;
 			}
 		}
 	}
-	(void)track_dir;
+}
+
+static void	sig_handler(int signo)
+{
+	if (signo == SIGINT)
+	{
+		printf("received SIGINT\n");
+		stop = 1;
+	}
 }
 
 int	main(int argc, char **argv)
 {
-	t_file_info	info[argc - 1];
-	t_dir		**track_dir;
-	int			i;
-	struct stat	st;
-	char		*dst_dir = "backup/";
+	t_file_info		info[argc - 1];
+	t_dir			**track_dir;
+	int				i;
+	struct stat		st;
+	char			home_dir[1024];
+	signal(SIGINT, sig_handler);
 
+	//mask_signals();
+	get_home_dir(home_dir, sizeof(home_dir));
+	if (DEBUG)
+		printf("home dir %s\n", home_dir);
 	if (argc < 2)
 	{
 		printf("Usage: back-up [file | directory]\n");
@@ -276,35 +289,35 @@ int	main(int argc, char **argv)
 	}
 	for (i = 0; i < argc - 1; i++)
 		printf("info %s\n", info[i].file);
-	if (mkdir(dst_dir, 0755) == -1)
+	if (mkdir(home_dir, 0755) == -1)
 	{
 		if (DEBUG)
-			printf("directory '%s' already exists\n", dst_dir);
+			printf("directory '%s' already exists\n", home_dir);
 		perror("mkdir error");
 		exit (1);
 	}
 	track_dir = count_dirs(argc, info);
-	while (1)
+	while (!stop)
 	{
 		for (i = 0; i < argc - 1; i++)
 		{
 			if (stat(info[i].file, &st) == -1)
 			{
-				if (DEBUG)
-					printf("file '%s'\n", info[i].file);
 				perror("stat error");
 				exit (1);
 			}
 			if (S_ISDIR(st.st_mode))
 			{
-				check_modification(&info[i], track_dir, true, dst_dir);
+				check_modification(&info[i], track_dir, true, home_dir);
 			}
 			else
 			{
-				check_modification(&info[i], track_dir, false, dst_dir);
+				check_modification(&info[i], track_dir, false, home_dir);
 			}
 		}
 		sleep(15);
 	}
+	ft_free(track_dir);
+	printf("\033[33mbackup stopped\033[0m\n");
 	return (0);
 }

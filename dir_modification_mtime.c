@@ -7,20 +7,17 @@
 #include <unistd.h>
 #include <sys/stat.h>
 
-static void	create_new_backup(char *file, char *main_dir, t_dir **track_dir)
+static void	create_new_backup(char *file, char *backup_path)
 {
 	int		fd;
 	char	back_file[256];
-	char	buf[4096];
+	char	buf[10000];
 	char	error_msg[1024];
 	int		n;
+	char	home_dir[128];
 
-	if (DEBUG)
-	{
-		printf("file en create_new_backup %s\n", file);
-		printf("main_dir %s\n", main_dir);
-	}
-	snprintf(back_file, sizeof(back_file), "backup/%s.bak", file);
+	get_home_dir(home_dir, sizeof(home_dir));
+	snprintf(back_file, sizeof(back_file), "%s%s.bak", home_dir, backup_path);
 	if ((fd = open(file, O_RDONLY)) < 0)
 	{
 		snprintf(error_msg, sizeof(error_msg), "Error open: %s", file);
@@ -48,8 +45,6 @@ static void	create_new_backup(char *file, char *main_dir, t_dir **track_dir)
 	}
 	close(fd);
 	printf("backup file %s created\n", back_file);
-	(void)main_dir;
-	(void)track_dir;
 }
 
 static bool	check_file_mtime(char *file, char *main_dir, t_dir **track_dir)
@@ -60,26 +55,15 @@ static bool	check_file_mtime(char *file, char *main_dir, t_dir **track_dir)
 	char		error_msg[1024];
 
 	i = 0;
-	if (DEBUG)
-	{
-		printf("check_file_mtime: file: %s, main_dir: %s\n", file, main_dir);
-	}
 	while (track_dir[i] != NULL)
 	{
-		printf("comparing %s with %s\n", track_dir[i]->base_dir, main_dir);
-		// Comparing main_dir argument with directory passed as argument argv[n]
 		if (strcmp(track_dir[i]->base_dir, main_dir) == 0)
 		{
 			j = 0;
 			while (track_dir[i]->tree[j] != NULL)
 			{
-				//printf("comparing %s with %s\n", track_dir[i]->tree[j]->file_name, file);
 				if (strcmp(track_dir[i]->tree[j]->file_name, file) == 0)
 				{
-					if (DEBUG)
-					{
-						printf("encontrado: %s\n", file);
-					}
 					if (stat(file, &st) < 0)
 					{
 						snprintf(error_msg, sizeof(error_msg), "Error stat: %s", file);
@@ -94,7 +78,7 @@ static bool	check_file_mtime(char *file, char *main_dir, t_dir **track_dir)
 					{
 						printf("file %s has been modified\n", file);
 						track_dir[i]->tree[j]->baseline_mtime = st.st_mtime;
-						create_new_backup(file, main_dir, track_dir);
+						create_new_backup(file, track_dir[i]->tree[j]->backup_path);
 						return (true);
 					}
 				}
@@ -112,11 +96,9 @@ static bool	check_subdir_mtime(char *dir, char *main_dir, t_dir **track_dir)
 	struct dirent	*entry;
 	char			error_msg[1024];
 	char			full_path[1024];
+	bool			modified;
 
-	if (DEBUG)
-	{
-		printf("check_subdir_mtime: dir: %s\n", dir);
-	}
+	modified = false;
 	if ((dp = opendir(dir)) == NULL)
 	{
 		snprintf(error_msg, sizeof(error_msg), "Error opendir: %s", dir);
@@ -133,23 +115,27 @@ static bool	check_subdir_mtime(char *dir, char *main_dir, t_dir **track_dir)
 			snprintf(full_path, sizeof(full_path), "%s/%s", dir, entry->d_name);
 			if (check_subdir_mtime(full_path, main_dir, track_dir) == true)
 			{
-				printf("subdir %s has been modified\n", entry->d_name);
-				return (true);
+				modified = true;
+				break ;
 			}
-			printf("subdir: %s\n", entry->d_name);
 		}
 		else
 		{
 			snprintf(full_path, sizeof(full_path), "%s/%s", dir, entry->d_name);
 			if (check_file_mtime(full_path, main_dir, track_dir) == true)
 			{
-				printf("subfile %s has been modified\n", entry->d_name);
-				return (true);
+				modified = true;
+				break ;
 			}
 		}
 	}
-	closedir(dp);
-	return (false);
+	if (closedir(dp) < 0)
+	{
+		snprintf(error_msg, sizeof(error_msg), "Error closedir: %s", dir);
+		perror(error_msg);
+		exit(EXIT_FAILURE);
+	}
+	return (modified);
 }
 
 /*
@@ -165,7 +151,9 @@ bool	check_dir_mtime(char *main_dir, t_dir **track_dir)
 	struct dirent	*entry;
 	char			error_msg[1024];
 	char			full_path[1024];
+	bool			modified;
 
+	modified = false;
 	if ((dp = opendir(main_dir)) == NULL)
 	{
 		snprintf(error_msg, sizeof(error_msg), "Error opendir: %s", main_dir);
@@ -182,8 +170,8 @@ bool	check_dir_mtime(char *main_dir, t_dir **track_dir)
 			snprintf(full_path, sizeof(full_path), "%s/%s", main_dir, entry->d_name);
 			if (check_subdir_mtime(full_path, main_dir, track_dir) == true)
 			{
-				printf("dir %s has been modified\n", entry->d_name);
-				return (true);
+				modified = true;
+				break ;
 			}
 		}
 		else
@@ -191,11 +179,16 @@ bool	check_dir_mtime(char *main_dir, t_dir **track_dir)
 			snprintf(full_path, sizeof(full_path), "%s/%s", main_dir, entry->d_name);
 			if (check_file_mtime(full_path, main_dir, track_dir) == true)
 			{
-				printf("file %s has been modified\n", entry->d_name);
-				return (true);
+				modified = true;
+				break ;
 			}
 		}
 	}
-	closedir(dp);
-	return (false);
+	if (closedir(dp) < 0)
+	{
+		snprintf(error_msg, sizeof(error_msg), "Error closedir: %s", main_dir);
+		perror(error_msg);
+		exit(EXIT_FAILURE);
+	}
+	return (modified);
 }
