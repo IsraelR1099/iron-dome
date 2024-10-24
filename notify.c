@@ -210,7 +210,7 @@ void	*notify(void *args)
 	return (NULL);
 }
 
-int	check_functions(int argc, char **argv)
+int	check_functions(int argc, char **argv, int backup_interval)
 {
 	pthread_t		thread1;
 	pthread_t		thread2;
@@ -220,6 +220,7 @@ int	check_functions(int argc, char **argv)
 	struct inotify_args	args;
 
 	set_signals();
+	printf("backup_interval: %d\n", backup_interval);
 	args.argc = argc;
 	args.argv = argv;
 	pthread_attr_init(&attr);

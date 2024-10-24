@@ -241,7 +241,6 @@ static void	check_modification(t_file_info *info, t_dir **track_dir, bool is_dir
 		else
 		{
 			printf("file checking\n");
-			printf("baseline %lld and st mtime %ld\n", info->baseline_mtime, st.st_mtime);
 			if (info->baseline_mtime < st.st_mtime)
 			{
 				printf("\033[33mfile %s has been modified\033[0m\n", info->file);
