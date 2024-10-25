@@ -18,10 +18,10 @@ extern void						alert(const char *msg);
 
 static void	create_backup_file(char *file, char *dst_dir)
 {
-	int	fd;
+	int		fd;
 	char	backup_file[256];
 	char	buf[10000];
-	int	n;
+	int		n;
 
 	if (DEBUG)
 	{
@@ -69,55 +69,7 @@ static void	create_backup_file(char *file, char *dst_dir)
 		printf("backup file created\n");
 }
 
-static bool	endswith(char *s, char *suffix)
-{
-	int	s_len;
-	int	suffix_len;
-
-	s_len = strlen(s);
-	suffix_len = strlen(suffix);
-	if (s_len < suffix_len)
-		return (false);
-	return (strcmp(s + s_len - suffix_len, suffix) == 0);
-}
-
-static void	create_dir(char *dir)
-{
-	char	error_msg[2048];
-	char	temp[1024];
-	char	*pos;
-
-	snprintf(temp, sizeof(temp), "%s", dir);
-
-	for (pos = temp + 1; *pos; pos++)
-	{
-		if (*pos == '/')
-		{
-			*pos = '\0';
-			if (mkdir(temp, 0755) < 0)
-			{
-				if (errno != EEXIST)
-				{
-					snprintf(error_msg, sizeof(error_msg), "mkdir error: %s", temp);
-					perror(error_msg);
-					exit (1);
-				}
-			}
-			*pos = '/';
-		}
-	}
-	if (mkdir(temp, 0755) < 0)
-	{
-		if (errno != EEXIST)
-		{
-			snprintf(error_msg, sizeof(error_msg), "mkdir error: %s", temp);
-			perror(error_msg);
-			exit (1);
-		}
-	}
-}
-
-static void	create_backup_directory(char *src_dir, char *backup, bool first_time)
+/*static void	create_backup_directory(char *src_dir, char *backup, bool first_time)
 {
 	char			backup_dir[4096] = {0};
 	char			tmp_dir[4096] = {0};
@@ -215,7 +167,7 @@ static void	create_backup_directory(char *src_dir, char *backup, bool first_time
 	}
 	if (DEBUG)
 		printf("backup directory created\n");
-}
+}*/
 
 static void	check_modification(t_file_info *info, t_dir **track_dir, bool is_dir, char *dst_dir)
 {
@@ -233,9 +185,10 @@ static void	check_modification(t_file_info *info, t_dir **track_dir, bool is_dir
 		info->baseline_mtime = st.st_mtime;
 		if (is_dir)
 		{
+			printf("creating backup directory\n");
 			create_backup_directory(info->file, dst_dir, true);
 			track_dir_mtime(info->file, track_dir);
-			create_backup_dir(info->file, track_dir);
+			set_backup_dir(info->file, track_dir);
 		}
 		else
 		{

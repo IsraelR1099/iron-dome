@@ -8,6 +8,14 @@
 #include <stdbool.h>
 #include <limits.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <dirent.h>
+#include <sys/types.h>
+#include <string.h>
+#include <errno.h>
+#include <sys/stat.h>
+
 
 struct	inotify_args
 {
@@ -46,8 +54,11 @@ bool	check_modification_time(char *dir, long long baseline_mtime);
 t_dir	**count_dirs(int argc, t_file_info *info);
 void	track_dir_mtime(char *dir, t_dir **dir_tree);
 bool	check_dir_mtime(char *main_dir, t_dir **track_dir);
-void	create_backup_dir(char *main_dir, t_dir **track_dir);
+void	set_backup_dir(char *main_dir, t_dir **track_dir);
 void	ft_free(t_dir **track_dir);
 char	*get_home_dir(char *home_dir, size_t len);
+void	create_dir(char *dir);
+bool	endswith(char *s, char *suffix);
+void	create_backup_directory(char *src_dir, char *backup, bool first_time);
 
 #endif

@@ -23,7 +23,7 @@ static void	set_backup_path(char *file_name, char *backup_path)
 		}
 }
 
-void	create_backup_dir(char *main_dir, t_dir **track_dir)
+void	set_backup_dir(char *main_dir, t_dir **track_dir)
 {
 	int	i;
 	int	j;
