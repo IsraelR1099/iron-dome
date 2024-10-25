@@ -17,6 +17,7 @@ volatile sig_atomic_t	stop = 0;
 extern void		*scan_processes(void *arg);
 extern void		mask_signals(void);
 extern void		*entropy(void *argv);
+extern void		*backup(void *argv);
 extern void		alert(const char *message);
 pthread_mutex_t		mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -212,17 +213,19 @@ void	*notify(void *args)
 
 int	check_functions(int argc, char **argv, int backup_interval)
 {
-	pthread_t		thread1;
-	pthread_t		thread2;
-	pthread_t		thread3;
+	pthread_t			thread1;
+	pthread_t			thread2;
+	pthread_t			thread3;
+	pthread_t			thread4;
 	pthread_attr_t		attr;
-	int			ret;
+	int					ret;
 	struct inotify_args	args;
 
 	set_signals();
 	printf("backup_interval: %d\n", backup_interval);
 	args.argc = argc;
 	args.argv = argv;
+	args.bk_interval = backup_interval;
 	pthread_attr_init(&attr);
 	pthread_mutex_init(&mutex, NULL);
 	ret = pthread_create(&thread1, &attr, notify, (void *)&args);
@@ -243,10 +246,21 @@ int	check_functions(int argc, char **argv, int backup_interval)
 		fprintf(stderr, "Error - pthread_create() return code: %d\n", ret);
 		exit(EXIT_FAILURE);
 	}
+	if (backup_interval > 10)
+	{
+		ret = pthread_create(&thread4, NULL, backup, (void *)&args);
+		if (ret)
+		{
+			fprintf(stderr, "Error - pthread_create() return code: %d\n", ret);
+			exit(EXIT_FAILURE);
+		}
+	}
 	mask_signals();
 	pthread_join(thread1, NULL);
 	pthread_join(thread2, NULL);
 	pthread_join(thread3, NULL);
+	if (backup_interval > 10)
+		pthread_join(thread4, NULL);
 	pthread_mutex_destroy(&mutex);
 	return (0);
 }

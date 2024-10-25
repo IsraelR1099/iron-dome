@@ -3,7 +3,8 @@ CFLAGS := -Wall -Wextra -fPIC
 LDFLAGS := -shared -lpthread
 
 # Source files
-SRCS := alert.c check_crypto.c cpu_usage.c signals.c notify.c entropy.c
+SRCS := alert.c check_crypto.c cpu_usage.c signals.c notify.c entropy.c \
+		backup.c backup-utils.c backup-tree.c free.c dir_modification_mtime.c
 OBJS := $(SRCS:.c=.o)
 
 # Output shared library

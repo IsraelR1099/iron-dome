@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <signal.h>
+#include "notify.h"
 
 #define BUF_SIZE 512
 
@@ -39,7 +40,8 @@ static void check_crypto_libs(int pid)
 				|| strstr(line, "gpg")
 				|| strstr(line, "python"))
 		{
-			printf("INFO: Process %d is using crypto libraries: %s", pid, line);
+/*			if (DEBUG)
+				printf("INFO: Process %d is using crypto libraries: %s", pid, line);*/
 			cpu_usage = calculate_cpu_usage(pid);
 			if (cpu_usage > 0.5)
             		{

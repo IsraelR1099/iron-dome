@@ -13,6 +13,7 @@ struct	inotify_args
 {
 	int		argc;
 	char	**argv;
+	int		bk_interval;
 };
 
 typedef struct	s_file_info
