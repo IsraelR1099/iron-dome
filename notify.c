@@ -5,7 +5,6 @@
 #include <sys/types.h>
 #include <sys/inotify.h>
 #include <poll.h>
-#include <string.h>
 #include <signal.h>
 #include <pthread.h>
 #include "notify.h"
@@ -207,7 +206,7 @@ void	*notify(void *args)
 	close(fd);
 	free(wd);
 	free(read_count);
-	printf("Resources cleaned up. Exiting.\n");
+	printf("\033[33mResources cleaned up. Exiting.\n\033[0m");
 	return (NULL);
 }
 

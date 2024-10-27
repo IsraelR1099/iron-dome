@@ -11,7 +11,7 @@ void	alert(const char *msg)
 	FILE	*log_file;
 
 	pthread_mutex_lock(&mutex);
-	log_file = fopen("irondome.log", "a");
+	log_file = fopen("/var/log/irondome.log", "a");
 	if (log_file)
 	{
 		fprintf(log_file, "%s", msg);

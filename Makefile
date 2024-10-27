@@ -4,7 +4,8 @@ LDFLAGS := -shared -lpthread
 
 # Source files
 SRCS := alert.c check_crypto.c cpu_usage.c signals.c notify.c entropy.c \
-		backup.c backup-utils.c backup-tree.c free.c dir_modification_mtime.c
+		backup.c backup-utils.c backup-tree.c free.c dir_modification_mtime.c \
+		create_bk_dir.c create_bk_file.c dir-utils.c
 OBJS := $(SRCS:.c=.o)
 
 # Output shared library

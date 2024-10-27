@@ -1,24 +1,31 @@
 #include "notify.h"
 
-/* create_tmp_pathectory receives the directory to check (src_dir).
- * The backup argument is the one pointing to the user's HOME directory with backup included.
- * */
-
-void	create_tmp_pathectory(char *src_dir, char *backup, bool first_time)
+void	create_backup_directory(char *src_dir, char *backup)
 {
-	char			tmp_path[4096] = {0};
-	char			tmp_src[256];
-	char			msg_error[256];
-	//size_t			remaining_space;
-	DIR				*dp;
 	struct dirent	*entry;
+	DIR				*dp;
+	char			tmp_path[2048] = {0};
+	char			tmp_file_path[4096] = {0};
+	char			tmp_bk_file[4096] = {0};
+	char			tmp_src_dir[4096] = {0};
+	char			msg_error[256];
+	const char		*dir_name;
+	size_t			len;
 
-	memset(tmp_src, 0, sizeof(tmp_src));
-	strncpy(tmp_src, src_dir, sizeof(tmp_src));
-	tmp_src[sizeof(tmp_src) - 1] = '\0';
-	if (endswith(src_dir, "/"))
-		tmp_src[strlen(tmp_src) - 1] = '\0';
-	snprintf(tmp_path, sizeof(tmp_path), "%s%s.bak", backup, tmp_src);
+	strncpy(tmp_src_dir, src_dir, sizeof(tmp_src_dir) - 1);
+	tmp_src_dir[sizeof(tmp_src_dir) - 1] = '\0';
+	len = strlen(tmp_src_dir);
+	if (len > 0 && tmp_src_dir[len - 1] == '/')
+		tmp_src_dir[len - 1] = '\0';
+	dir_name = strrchr(tmp_src_dir, '/');
+	if (dir_name)
+			dir_name++;
+	else
+		dir_name = src_dir;
+	if (endswith(backup, "/"))
+		snprintf(tmp_path, sizeof(tmp_path), "%s%s.bak", backup, dir_name);
+	else
+		snprintf(tmp_path, sizeof(tmp_path), "%s/%s.bak", backup, dir_name);
 	create_dir(tmp_path);
 	if ((dp = opendir(src_dir)) == NULL)
 	{
@@ -31,16 +38,15 @@ void	create_tmp_pathectory(char *src_dir, char *backup, bool first_time)
 		if (strcmp(entry->d_name, ".") == 0
 			|| strcmp(entry->d_name, "..") == 0)
 			continue ;
-		if (entry->d_type == DT_DIR)
-		{
-			printf("src dir %s y backup %s\n", tmp_src,backup);
-		}
+		if (endswith(src_dir, "/"))
+			snprintf(tmp_file_path, sizeof(tmp_file_path), "%s%s", src_dir, entry->d_name);
 		else
-		{
-			printf("archivo es de %s es: %s\n", entry->d_name, src_dir);
-			snprintf(tmp_path, sizeof(tmp_path), "%s/" src_dir, entry->d_name);
-			create_backup_file(tmp_path, )
-		}
+			snprintf(tmp_file_path, sizeof(tmp_file_path), "%s/%s", src_dir, entry->d_name);
+		snprintf(tmp_bk_file, sizeof(tmp_bk_file), "%s/%s.bak", tmp_path, entry->d_name);
+		if (entry->d_type == DT_DIR)
+			create_backup_directory(tmp_file_path, tmp_path);
+		else
+			create_relative_file(tmp_file_path, tmp_bk_file);
 	}
 	if (closedir(dp) < 0)
 	{
@@ -48,5 +54,4 @@ void	create_tmp_pathectory(char *src_dir, char *backup, bool first_time)
 		perror(msg_error);
 		exit (EXIT_FAILURE);
 	}
-	(void)first_time;
 }

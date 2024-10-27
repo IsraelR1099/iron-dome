@@ -6,7 +6,7 @@ if [ -z "$1" ]; then
 fi
 
 MONITORED_PATH="$1"
-LOG_FILE="irondome.log"
+LOG_FILE="/var/log/irondome.log"
 IRON_DOME="./iron-dome.py"
 
 if [ -f "$MONITORED_PATH" ]; then

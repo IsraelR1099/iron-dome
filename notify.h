@@ -15,6 +15,7 @@
 #include <string.h>
 #include <errno.h>
 #include <sys/stat.h>
+#include <pwd.h>
 
 
 struct	inotify_args
@@ -32,14 +33,6 @@ typedef struct	s_file_info
 	long long	baseline_mtime;
 }	t_file_info;
 
-typedef struct s_dir_tree
-{
-	char				*base_dir;
-	char				file_name[1024];
-	long long			baseline_mtime;
-	struct t_dir_tree	*next;
-}	t_dir_tree;
-
 //Free  the memory of the array t_dir[nbr of directories]
 //Free the memory of the array t_file_info[nbr of files]
 
@@ -54,11 +47,13 @@ bool	check_modification_time(char *dir, long long baseline_mtime);
 t_dir	**count_dirs(int argc, t_file_info *info);
 void	track_dir_mtime(char *dir, t_dir **dir_tree);
 bool	check_dir_mtime(char *main_dir, t_dir **track_dir);
-void	set_backup_dir(char *main_dir, t_dir **track_dir);
+void	set_backup_dir(char *main_dir, char *backup_dir, t_dir **track_dir);
 void	ft_free(t_dir **track_dir);
 char	*get_home_dir(char *home_dir, size_t len);
 void	create_dir(char *dir);
 bool	endswith(char *s, char *suffix);
-void	create_backup_directory(char *src_dir, char *backup, bool first_time);
+void	create_backup_directory(char *src_dir, char *backup);
+void	create_backup_file(char *file, char *dst_dir);
+void	create_relative_file(char *file, char *dst_dir);
 
 #endif

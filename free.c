@@ -1,5 +1,4 @@
 #include "notify.h"
-#include <stdlib.h>
 
 void	ft_free(t_dir **track_dir)
 {

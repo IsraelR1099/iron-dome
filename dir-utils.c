@@ -2,12 +2,15 @@
 
 void	create_dir(char *dir)
 {
-	char	error_msg[2048];
-	char	temp[1024];
+	char	error_msg[2048] = {0};
+	char	temp[1024] = {0};
 	char	*pos;
+	size_t	len;
 
 	snprintf(temp, sizeof(temp), "%s", dir);
-
+	len = strlen(temp);
+	if (temp[len - 1] == '/')
+		temp[len - 1] = '\0';
 	for (pos = temp + 1; *pos; pos++)
 	{
 		if (*pos == '/')
