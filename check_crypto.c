@@ -1,8 +1,3 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <dirent.h>
-#include <unistd.h>
 #include <errno.h>
 #include <signal.h>
 #include "notify.h"
@@ -16,8 +11,8 @@ extern void                     alert(const char *message);
 
 static void check_crypto_libs(int pid)
 {
-	char	path[BUF_SIZE];
-	char	line[BUF_SIZE];
+	char	path[BUF_SIZE] = {0};
+	char	line[BUF_SIZE] = {0};
 	FILE	*file;
 	float	cpu_usage;
 	char	buffer[1024];
@@ -40,10 +35,10 @@ static void check_crypto_libs(int pid)
 				|| strstr(line, "gpg")
 				|| strstr(line, "python"))
 		{
-/*			if (DEBUG)
-				printf("INFO: Process %d is using crypto libraries: %s", pid, line);*/
+			//printf("INFO: Process %d is using crypto libraries: %s", pid, line);
 			cpu_usage = calculate_cpu_usage(pid);
-			if (cpu_usage > 0.5)
+			//printf("cpu_usage es %f\n", cpu_usage);
+			if (cpu_usage > 5.0)
             		{
 				printf("\033[1;31mWARNING: Process %d is using a lot of CPU and crypto libraries: %f\033[0m\n", pid, cpu_usage);
 				snprintf(buffer, sizeof(buffer), "WARNING: Process %d is using a lot of CPU and crypto libraries: %f\n", pid, cpu_usage);

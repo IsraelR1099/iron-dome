@@ -119,7 +119,7 @@ def reverse_encryption(base_dir, silent, key):
 
 if __name__ == '__main__':
     user = os.environ.get('SUDO_USER', os.environ.get('USER'))
-    base_dir = f"/home/{user}/infect/"
+    base_dir = f"/home/{user}/infection/"
     parser = argparse.ArgumentParser(
     description='A ransomware simulation tool developed for the Linux platform.',
     )

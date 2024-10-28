@@ -31,8 +31,8 @@ float	get_uptime(void)
 char	*get_proc_stat(int pid)
 {
 	int		fd;
-	char	path[256];
-	char	buf[256];
+	char	path[256] = {0};
+	char	buf[256] = {0};
 	char	*ret;
 	int		read_bytes;
 
@@ -43,7 +43,7 @@ char	*get_proc_stat(int pid)
 		perror("open error get_proc");
 		exit (1);
 	}
-	read_bytes = read(fd, buf, 256);
+	read_bytes = read(fd, buf, sizeof(buf) - 1);
 	if (read_bytes < 0)
 	{
 		perror("read error");
@@ -51,6 +51,11 @@ char	*get_proc_stat(int pid)
 	}
 	buf[read_bytes] = '\0';
 	ret = strdup(buf);
+	if (!ret)
+	{
+		fprintf(stderr, "strdup error\n");
+		exit (1);
+	}
 	close(fd);
 	return (ret);
 }
@@ -65,7 +70,7 @@ char	*get_word(char *str)
 	while (str[i] == ' ')
 		i++;
 	j = i;
-	while (str[j] != ' ')
+	while (str[j] != ' ' && str[j] != '\0')
 		j++;
 	word = (char *)calloc(j - i + 1, sizeof(char));
 	if (!word)
@@ -85,20 +90,23 @@ int	get_time(char *buf, int index)
 	char	*tmp;
 
 	count = 0;
-	for (i = 0; buf[i]; i++)
+	i = 0;
+	while(buf[i] != '\0')
 	{
 		if (buf[i] == ' ')
 			count++;
 		if (count == index)
 		{
 			tmp = get_word(&buf[i]);
-			break ;
+			ret = atoi(tmp);
+			free(tmp);
+			tmp = NULL;
+			return (ret);
 		}
+		i++;
 	}
-	ret = atoi(tmp);
-	free(tmp);
-	tmp = NULL;
-	return (ret);
+	fprintf(stderr, "Error: index out of bounds\n");
+	return (0);
 }
 
 
@@ -135,11 +143,12 @@ float	calculate_cpu_usage(int pid)
 	total_time = utime + stime;
 	total_time = total_time + cutime + cstime;
 //	printf("total_time es %d\n", total_time);
-	seconds = uptime - (starttime / hertz);
+	seconds = uptime - (starttime / (float)hertz);
 //	printf("seconds es %d\n", seconds);
 	if (seconds == 0)
 		return (0);
-	percent = 100 * ((total_time / hertz) / seconds);
+//	printf("total time %d, hertz %d\n", total_time, hertz);
+	percent = 100 * ((total_time / (float)hertz) / seconds);
 //	printf("percent es %d\n", percent);
 	free(buf);
 	return(percent);

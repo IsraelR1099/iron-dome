@@ -5,7 +5,7 @@ import os
 import time
 
 
-def intensive_crypto(duration=60):
+def intensive_crypto(duration=30):
     data = os.urandom(1024 * 1024)
     end = time.time() + duration
     while time.time() < end:
